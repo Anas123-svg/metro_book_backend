@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const { connectDB } = require("./config/db"); 
+const { connectDB } = require("./config/db");
+const testRoutes = require("./routes/testRoutes"); 
 const corporateHostRoutes = require("./routes/corporateHostRoutes");
 const corporateBookRoutes = require("./routes/corporateBookRoutes");
 const corporateHostCustomerRoutes = require("./routes/corporateHostCustomerRoutes");
@@ -11,12 +12,23 @@ const bookingRoutes = require("./routes/Booking");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/UserRoutes");
 
-app.use(cors());
+app.disable("x-powered-by");
+// Bearer-token authentication: allow all origins without cross-origin cookies.
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: false,
+  maxAge: 86400,
+  optionsSuccessStatus: 204,
+}));
 
 // Parse JSON bodies
 app.use(express.json());
 
 // -------------------- ROUTES --------------------
+app.get("/", (req, res) => res.json({ service: "MetroBook API", status: "ok" }));
+app.use("/api", testRoutes);
+app.use(testRoutes);
 app.use("/api", corporateHostRoutes);
 app.use("/api", corporateBookRoutes);
 app.use("/api/cb", corporateHostCustomerRoutes);
@@ -50,4 +62,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Vercel imports this app; only direct local execution opens a listener.
+if (require.main === module && !process.env.VERCEL) {
+  startServer();
+}
+
+module.exports = app;

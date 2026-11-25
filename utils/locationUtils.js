@@ -6,11 +6,11 @@ const vm = require("vm");
 let cachedBoroughs = null;
 
 const BOROUGH_TS_FILES = [
-	{ file: "bronxData.ts", varName: "BronxData" },
-	{ file: "brooklynData.ts", varName: "BrooklynData" },
-	{ file: "manhattanData.ts", varName: "ManhattanData" },
-	{ file: "queensData.ts", varName: "QueensData" },
-	{ file: "statenIslandData.ts", varName: "StatenIslandData" },
+	{ file: "bronxData.ts", varName: "BronxData", read: () => fs.readFileSync(path.join(__dirname, "..", "data", "bronxData.ts"), "utf8") },
+	{ file: "brooklynData.ts", varName: "BrooklynData", read: () => fs.readFileSync(path.join(__dirname, "..", "data", "brooklynData.ts"), "utf8") },
+	{ file: "manhattanData.ts", varName: "ManhattanData", read: () => fs.readFileSync(path.join(__dirname, "..", "data", "manhattanData.ts"), "utf8") },
+	{ file: "queensData.ts", varName: "QueensData", read: () => fs.readFileSync(path.join(__dirname, "..", "data", "queensData.ts"), "utf8") },
+	{ file: "statenIslandData.ts", varName: "StatenIslandData", read: () => fs.readFileSync(path.join(__dirname, "..", "data", "statenIslandData.ts"), "utf8") },
 ];
 
 const loadBoroughsFromTsFiles = () => {
@@ -18,12 +18,9 @@ const loadBoroughsFromTsFiles = () => {
 
 	const result = [];
 
-	for (const { file, varName } of BOROUGH_TS_FILES) {
+	for (const { file, varName, read } of BOROUGH_TS_FILES) {
 		try {
-			const tsPath = path.join(__dirname, "..", "data", file);
-			if (!fs.existsSync(tsPath)) continue;
-
-			const tsSource = fs.readFileSync(tsPath, "utf8");
+			const tsSource = read();
 
 			// Strip TypeScript-specific syntax so it can be evaluated as plain JS
 			let jsSource = tsSource

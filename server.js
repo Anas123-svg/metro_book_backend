@@ -1,16 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const { connectDB } = require("./config/db");
-const testRoutes = require("./routes/testRoutes"); 
-const corporateHostRoutes = require("./routes/corporateHostRoutes");
-const corporateBookRoutes = require("./routes/corporateBookRoutes");
-const corporateHostCustomerRoutes = require("./routes/corporateHostCustomerRoutes");
-const corporateBookCustomerRoutes = require("./routes/corporateBookCustomerRoutes");
-const corporateHostListingRoutes = require("./routes/corporateHostListingRoutes");
-const bookingRoutes = require("./routes/Booking");
-const adminRoutes = require("./routes/adminRoutes");
-const userRoutes = require("./routes/UserRoutes");
+require("dotenv").config();
+const testRoutes = require("./routes/testRoutes");
 
 app.disable("x-powered-by");
 // Bearer-token authentication: allow all origins without cross-origin cookies.
@@ -29,42 +21,29 @@ app.use(express.json());
 app.get("/", (req, res) => res.json({ service: "MetroBook API", status: "ok" }));
 app.use("/api", testRoutes);
 app.use(testRoutes);
-app.use("/api", corporateHostRoutes);
-app.use("/api", corporateBookRoutes);
-app.use("/api/cb", corporateHostCustomerRoutes);
-app.use("/api/book", corporateBookCustomerRoutes);
-app.use("/api", corporateHostListingRoutes);
-app.use("/api", bookingRoutes);
-app.use("/api", adminRoutes);
-app.use("/api", userRoutes);
-// Compatibility mounts for clients that call legacy root paths like /books or /hosts.
-app.use(corporateHostRoutes);
-app.use(corporateBookRoutes);
-app.use(corporateHostCustomerRoutes);
-app.use(corporateBookCustomerRoutes);
-app.use(corporateHostListingRoutes);
-app.use(bookingRoutes);
-app.use(adminRoutes);
-app.use(userRoutes);
-
-// -------------------- SERVER --------------------
-const PORT = process.env.PORT || 5000;
-
-const startServer = async () => {
+// Initialize database-backed routes only when a business endpoint is requested.
+// The root, liveness and OPTIONS endpoints must not depend on database or Stripe configuration.
+let businessRoutes;
+app.use((req, res, next) => {
   try {
-    await connectDB(); // connect Sequelize to Postgres
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error("Failed to start server:", err);
-    process.exit(1);
+    if (!businessRoutes) businessRoutes = require("./routes/businessRoutes");
+  } catch (error) {
+    console.error("Business route initialization failed:", error.stack || error);
+    return res.status(503).json({ status: "unavailable", error: "BACKEND_INITIALIZATION_FAILED" });
   }
-};
+  return businessRoutes(req, res, next);
+});
+app.use((req, res) => res.status(404).json({ error: "NOT_FOUND" }));
+app.use((error, req, res, next) => {
+  console.error("Request failed:", error.name, error.code || "");
+  if (res.headersSent) return next(error);
+  const status = Number(error.status || error.statusCode);
+  return res.status(status >= 400 && status < 500 ? status : 500).json({ error: "REQUEST_FAILED" });
+});
 
-// Vercel imports this app; only direct local execution opens a listener.
+// Vercel imports the Express app. Local execution opens a listener without requiring DB availability.
 if (require.main === module && !process.env.VERCEL) {
-  startServer();
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
-
 module.exports = app;

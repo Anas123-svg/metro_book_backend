@@ -8,7 +8,11 @@ const { sendEmailVerificationCode } = require("../services/mailService");
 const Stripe = require("stripe");
 require("dotenv").config();
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+let stripe;
+const getStripe = () => {
+  if (!stripe) stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return stripe;
+};
 
 const getStripeConfigError = () => {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -333,9 +337,10 @@ exports.deleteCorporateBook = async (req, res) => {
 exports.addPaymentMethod = async (req, res) => {
   try {
     const stripeConfigError = getStripeConfigError();
-    if (stripeConfigError || !stripe) {
-      return res.status(500).json({ error: stripeConfigError || "Stripe client is not initialized" });
+    if (stripeConfigError) {
+      return res.status(500).json({ error: stripeConfigError });
     }
+    const stripe = getStripe();
 
     const corporateBookId =
       req.body.corporate_book_id || req.body.book_id || req.body.bookId || req.body.id;

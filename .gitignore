@@ -5,7 +5,3 @@ node_modules/
 .vercel/
 *.log
 *.sql
-
-.env
-.env.*
-!.env.example
